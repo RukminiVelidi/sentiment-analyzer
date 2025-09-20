@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* We're layering a semi-transparent gradient on top of a background image.
+               The last item in the list is the bottom layer.
+            */
+            background:
+                linear-gradient(-45deg, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.9), rgba(55, 65, 81, 0.9), rgba(75, 85, 99, 0.95)),
+                url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+
+            background-size: 400% 400%, cover; /* Size for the gradient, and 'cover' for the image */
+            background-attachment: fixed; /* Keeps the background image stationary on scroll */
+            background-position: center;
+            animation: gradientBG 15s ease infinite;
+        }
+        @import url('https://rsms.me/inter/inter.css');
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%, center; }
+            50% { background-position: 100% 50%, center; }
+            100% { background-position: 0% 50%, center; }
+        }
+        .glass-card {
+            background: rgba(17, 24, 39, 0.75); /* Made slightly more opaque for better readability */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        code {
+            background-color: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="text-gray-200">
+<main>
+    <section id="lab" class="py-20 sm:py-28 min-h-screen flex items-center justify-center">
+        <div class="max-w-2xl w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-4xl font-extrabold text-white sm:text-5xl tracking-tight">Sentiment Analysis AI 🧪</h2>
+                <p class="mt-4 text-lg text-gray-400 max-w-3xl mx-auto">
+                    An intelligent system to analyze text sentiment in real-time. Enter some text below to see it in action.
+                </p>
+            </div>
+            <div class="glass-card p-8">
+                <h3 class="text-xl font-semibold text-white mb-4">Enter Text to Analyze</h3>
+                <textarea id="text-input" rows="6" class="w-full p-4 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300" placeholder="e.g., The movie was absolutely fantastic!"></textarea>
+                <button id="analyze-btn" class="mt-6 w-full inline-flex items-center justify-center gap-x-2 px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-gray-900 transition-transform hover:scale-105">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    <span id="btn-text">Analyze</span>
+                    <div id="btn-loader" class="spinner hidden"></div>
+                </button>
+                <div id="result-container" class="mt-8"></div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+    const textInput = document.getElementById('text-input');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const resultContainer = document.getElementById('result-container');
+    const btnText = document.getElementById('btn-text');
+    const btnLoader = document.getElementById('btn-loader');
+
+    // SVG Icons for sentiments
+    const icons = {
+        Positive: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`,
+        Negative: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`,
+        Neutral: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="15" x2="16" y2="15"></line><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>`
+    };
+
+    async function getSentimentFromAPI(text) {
+        const endpoint = 'http://localhost:5001/predict';
+        const response = await fetch(endpoint, {
+            method: 'POST', mode: 'cors', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: text }),
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+    }
+
+    function displayResult(sentiment, confidence) {
+        const colors = {
+            Positive: { border: 'border-green-500', bg: 'bg-green-900/50', text: 'text-green-300' },
+            Negative: { border: 'border-red-500', bg: 'bg-red-900/50', text: 'text-red-300' },
+            Neutral: { border: 'border-gray-500', bg: 'bg-gray-800/50', text: 'text-gray-300' }
+        };
+        const color = colors[sentiment] || colors['Neutral'];
+
+        resultContainer.innerHTML = `
+            <div class="border ${color.border} ${color.bg} p-6 rounded-xl fade-in">
+                <div class="flex items-center gap-x-4">
+                    <div>${icons[sentiment]}</div>
+                    <div class="flex-grow flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-400">Result</p>
+                            <p class="text-2xl font-bold ${color.text}">${sentiment}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-medium text-gray-400">Confidence</p>
+                            <p class="text-2xl font-bold ${color.text}">${confidence}%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    analyzeBtn.addEventListener('click', async () => {
+        const text = textInput.value.trim();
+        if (!text) {
+            resultContainer.innerHTML = `<p class="text-yellow-400 text-center">Please enter some text to analyze.</p>`;
+            return;
+        }
+
+        btnText.classList.add('hidden');
+        btnLoader.classList.remove('hidden');
+        analyzeBtn.disabled = true;
+        resultContainer.innerHTML = `<p class="text-center text-gray-400">Communicating with the model...</p>`;
+
+        try {
+            let result = await getSentimentFromAPI(text);
+            const confidenceValue = parseFloat(result.confidence);
+            if (confidenceValue < 85) result.sentiment = 'Neutral';
+            displayResult(result.sentiment, result.confidence);
+        } catch (error) {
+            console.error("Error during sentiment analysis:", error);
+            resultContainer.innerHTML = `
+                <div class="border border-red-500 bg-red-900/50 p-4 rounded-lg fade-in">
+                    <p class="text-red-300 font-bold text-center">Connection Error</p>
+                    <p class="text-red-400 text-center mt-2">Failed to connect to the model. Please ensure the Python backend server is running in your terminal. <br>(Run <code>python app.py</code> in the 'backend' folder).</p>
+                </div>`;
+        } finally {
+            btnText.classList.remove('hidden');
+            btnLoader.classList.add('hidden');
+            analyzeBtn.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>

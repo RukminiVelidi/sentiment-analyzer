@@ -1,0 +1,12 @@
+# Python virtual environment
+venv/
+__pycache__/
+
+# Dataset folder
+aclImdb/
+
+# Trained model file
+*.pkl
+
+# macOS specific files
+.DS_Store
