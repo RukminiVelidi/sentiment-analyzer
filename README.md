@@ -88,3 +88,5 @@ sentiment-analyzer/
     ├── app.py          # Flask API server
     ├── train_model.py  # Script to train the ML model
     └── requirements.txt# List of Python dependencies
+
+--- Deployment Ready ---
