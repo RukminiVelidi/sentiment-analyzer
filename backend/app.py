@@ -5,7 +5,7 @@ import os
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app) # Enable Cross-Origin Resource Sharing
+CORS(app, resources={r"/*": {"origins": "*"}}) # Enable Cross-Origin Resource Sharing
 
 # --- MODEL LOADING ---
 # The model is loaded only once when the server starts.
@@ -61,7 +61,8 @@ def predict():
 
 # --- MAIN EXECUTION ---
 if __name__ == '__main__':
-    load_model() # Load the model before starting the server
-    # Running on port 5001 to avoid conflicts with other common services (like macOS AirPlay)
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    load_model()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
+
 
